@@ -1,1 +1,542 @@
 
+<!DOCTYPE html>
+
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام الحضور والغياب</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #333; direction: rtl; }
+
+/* Sidebar */
+.sidebar { position: fixed; right: 0; top: 0; width: 230px; height: 100vh;
+background: linear-gradient(180deg,#1F4E79,#2E75B6); color:#fff;
+display:flex; flex-direction:column; z-index:100; }
+.sidebar-logo { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.sidebar-logo h2 { font-size: 16px; font-weight: 700; }
+.sidebar-logo p  { font-size: 11px; opacity: .7; margin-top: 4px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:14px 20px;
+cursor:pointer; transition:.2s; font-size:14px; }
+.nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.15); }
+.nav-item .icon { font-size: 18px; width: 22px; text-align: center; }
+
+/* Main */
+.main { margin-right: 230px; min-height: 100vh; }
+.topbar { background:#fff; padding:16px 28px; display:flex; align-items:center;
+justify-content:space-between; border-bottom:1px solid #e2e8f0;
+position:sticky; top:0; z-index:50; }
+.topbar h1 { font-size: 18px; color: #1F4E79; font-weight: 700; }
+.topbar-actions { display:flex; gap:10px; align-items:center; }
+.content { padding: 24px 28px; }
+
+/* Cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 18px; margin-bottom: 28px; }
+.card { background:#fff; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.card-label { font-size:12px; color:#888; margin-bottom:8px; }
+.card-value { font-size:28px; font-weight:700; color:#1F4E79; }
+.card-sub   { font-size:11px; color:#aaa; margin-top:4px; }
+.card.green .card-value { color: #16a34a; }
+.card.red   .card-value { color: #dc2626; }
+.card.orange .card-value { color: #d97706; }
+
+/* Buttons */
+.btn { padding:9px 18px; border:none; border-radius:8px; cursor:pointer;
+font-size:13px; font-family:inherit; font-weight:600; transition:.2s; }
+.btn-primary { background:#1F4E79; color:#fff; }
+.btn-primary:hover { background:#163d60; }
+.btn-success { background:#16a34a; color:#fff; }
+.btn-success:hover { background:#138040; }
+.btn-danger  { background:#dc2626; color:#fff; }
+.btn-danger:hover  { background:#b91c1c; }
+.btn-outline { background:#fff; color:#1F4E79; border:1px solid #1F4E79; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+
+/* Table */
+.table-wrap { background:#fff; border-radius:14px; overflow:hidden;
+box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.table-header { padding:16px 20px; border-bottom:1px solid #f0f0f0;
+display:flex; align-items:center; justify-content:space-between; }
+.table-header h3 { font-size:15px; color:#1F4E79; }
+table { width:100%; border-collapse:collapse; }
+th { background:#f8fafc; padding:11px 14px; text-align:right;
+font-size:12px; color:#666; border-bottom:1px solid #eee; }
+td { padding:11px 14px; font-size:13px; border-bottom:1px solid #f5f5f5; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafcff; }
+.badge { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+.badge-green  { background:#dcfce7; color:#16a34a; }
+.badge-red    { background:#fee2e2; color:#dc2626; }
+.badge-orange { background:#fef3c7; color:#d97706; }
+.badge-blue   { background:#dbeafe; color:#2563eb; }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5);
+z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:#fff; border-radius:16px; padding:28px; width:520px;
+max-width:95vw; max-height:90vh; overflow-y:auto; }
+.modal h2 { font-size:18px; color:#1F4E79; margin-bottom:20px; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.form-group { display:flex; flex-direction:column; gap:6px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size:12px; color:#555; font-weight:600; }
+input, select { padding:9px 12px; border:1px solid #ddd; border-radius:8px;
+font-size:13px; font-family:inherit; width:100%; }
+input:focus, select:focus { outline:none; border-color:#1F4E79; }
+.form-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+
+/* Tabs */
+.tabs { display:flex; gap:4px; margin-bottom:20px;
+background:#fff; padding:6px; border-radius:12px;
+box-shadow:0 1px 4px rgba(0,0,0,.06); width:fit-content; }
+.tab { padding:8px 20px; border-radius:8px; cursor:pointer;
+font-size:13px; font-weight:600; color:#888; transition:.2s; }
+.tab.active { background:#1F4E79; color:#fff; }
+
+/* Page sections */
+.page { display:none; }
+.page.active { display:block; }
+
+/* Filters */
+.filters { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:center; }
+.filters select, .filters input { width:auto; min-width:160px; }
+
+/* Toast */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+background:#333; color:#fff; padding:12px 24px; border-radius:10px;
+font-size:13px; z-index:999; display:none; }
+.toast.show { display:block; animation: fadein .3s; }
+@keyframes fadein { from{opacity:0;bottom:10px} to{opacity:1;bottom:24px} }
+
+/* Responsive */
+@media(max-width:768px){
+.sidebar { width:0; overflow:hidden; }
+.main { margin-right:0; }
+.cards { grid-template-columns:1fr 1fr; }
+.form-grid { grid-template-columns:1fr; }
+}
+</style>
+
+</head>
+<body>
+
+<!-- Sidebar -->
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <h2>⏱ نظام الحضور</h2>
+    <p>إدارة الموظفين والرواتب</p>
+  </div>
+  <div class="nav-item active" onclick="showPage('dashboard')">
+    <span class="icon">📊</span> لوحة التحكم
+  </div>
+  <div class="nav-item" onclick="showPage('attendance')">
+    <span class="icon">📋</span> سجل الحضور
+  </div>
+  <div class="nav-item" onclick="showPage('employees')">
+    <span class="icon">👥</span> الموظفون
+  </div>
+  <div class="nav-item" onclick="showPage('payroll')">
+    <span class="icon">💰</span> مسيرة الرواتب
+  </div>
+</div>
+
+<!-- Main -->
+
+<div class="main">
+  <div class="topbar">
+    <h1 id="page-title">لوحة التحكم</h1>
+    <div class="topbar-actions">
+      <span id="today-date" style="font-size:13px;color:#888;"></span>
+      <button class="btn btn-success" onclick="runToday()">▶ تشغيل يدوي</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+```
+<!-- Dashboard -->
+<div id="page-dashboard" class="page active">
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">إجمالي الموظفين</div>
+      <div class="card-value" id="stat-emp">—</div>
+      <div class="card-sub">موظف نشط</div>
+    </div>
+    <div class="card green">
+      <div class="card-label">حضور اليوم</div>
+      <div class="card-value" id="stat-today">—</div>
+      <div class="card-sub">سجّلوا البصمة</div>
+    </div>
+    <div class="card red">
+      <div class="card-label">متأخرون اليوم</div>
+      <div class="card-value" id="stat-late">—</div>
+      <div class="card-sub">تجاوزوا وقت الدوام</div>
+    </div>
+    <div class="card orange">
+      <div class="card-label">خصومات الشهر</div>
+      <div class="card-value" id="stat-ded">—</div>
+      <div class="card-sub">ريال سعودي</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-header">
+      <h3>آخر سجلات الحضور</h3>
+    </div>
+    <table>
+      <thead>
+        <tr><th>الموظف</th><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>التأخر</th><th>الحالة</th><th>الخصم</th></tr>
+      </thead>
+      <tbody id="recent-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Attendance -->
+<div id="page-attendance" class="page">
+  <div class="filters">
+    <input type="month" id="att-month" onchange="loadAttendance()">
+    <select id="att-emp" onchange="loadAttendance()">
+      <option value="">كل الموظفين</option>
+    </select>
+    <button class="btn btn-outline" onclick="exportExcel()">⬇ تحميل Excel</button>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h3>سجل الحضور</h3></div>
+    <table>
+      <thead>
+        <tr><th>الموظف</th><th>التاريخ</th><th>الحضور</th><th>الانصراف</th>
+            <th>تأخر(د)</th><th>مبكر(د)</th><th>المخالفة</th><th>إنذار</th><th>الخصم(ر)</th></tr>
+      </thead>
+      <tbody id="att-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Employees -->
+<div id="page-employees" class="page">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+    <button class="btn btn-primary" onclick="openAddModal()">+ إضافة موظف</button>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h3>قائمة الموظفين</h3></div>
+    <table>
+      <thead>
+        <tr><th>الاسم</th><th>النوع</th><th>الراتب</th><th>بدل سكن</th>
+            <th>بدل مواصلات</th><th>دوام</th><th>إيميل</th><th>إجراء</th></tr>
+      </thead>
+      <tbody id="emp-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Payroll -->
+<div id="page-payroll" class="page">
+  <div class="filters">
+    <input type="month" id="pay-month">
+    <button class="btn btn-primary" onclick="exportPayroll()">⬇ تحميل مسيرة الرواتب</button>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h3>ملخص مسيرة الرواتب</h3></div>
+    <table>
+      <thead>
+        <tr><th>الموظف</th><th>الأساسي</th><th>بدل سكن</th><th>بدل مواصلات</th>
+            <th>عمولة</th><th>إجمالي المستحقات</th><th>خصم الحضور</th><th>صافي الراتب</th></tr>
+      </thead>
+      <tbody id="pay-table"></tbody>
+    </table>
+  </div>
+</div>
+```
+
+  </div>
+</div>
+
+<!-- Modal إضافة/تعديل موظف -->
+
+<div class="modal-overlay" id="emp-modal">
+  <div class="modal">
+    <h2 id="modal-title">إضافة موظف جديد</h2>
+    <input type="hidden" id="emp-id">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>الاسم بالعربي</label>
+        <input id="f-name-ar" placeholder="مثال: عبدالملك">
+      </div>
+      <div class="form-group">
+        <label>الاسم بالإنجليزي (كما في TTLock)</label>
+        <input id="f-name-en" placeholder="مثال: Abdulmalek">
+      </div>
+      <div class="form-group">
+        <label>الإيميل</label>
+        <input id="f-email" type="email" placeholder="email@company.com">
+      </div>
+      <div class="form-group">
+        <label>الراتب الأساسي (ريال)</label>
+        <input id="f-salary" type="number" placeholder="5000">
+      </div>
+      <div class="form-group">
+        <label>نوع الدوام</label>
+        <select id="f-type" onchange="toggleShiftFields()">
+          <option value="fixed">ثابت</option>
+          <option value="flex">مرن</option>
+        </select>
+      </div>
+      <div class="form-group" id="weekly-field" style="display:none">
+        <label>الساعات الأسبوعية</label>
+        <input id="f-weekly" type="number" value="40">
+      </div>
+      <div class="form-group shift-field">
+        <label>وقت الحضور</label>
+        <input id="f-start" type="time" value="09:00">
+      </div>
+      <div class="form-group shift-field">
+        <label>وقت الانصراف</label>
+        <input id="f-end" type="time" value="17:00">
+      </div>
+      <div class="form-group">
+        <label>بدل السكن (ريال)</label>
+        <input id="f-housing" type="number" value="0">
+      </div>
+      <div class="form-group">
+        <label>بدل المواصلات (ريال)</label>
+        <input id="f-transport" type="number" value="0">
+      </div>
+      <div class="form-group">
+        <label>عمولة المبيعات هذا الشهر (ريال)</label>
+        <input id="f-commission" type="number" value="0">
+      </div>
+      <div class="form-group">
+        <label>خصومات أخرى (ريال)</label>
+        <input id="f-other-ded" type="number" value="0">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const today = new Date();
+document.getElementById("today-date").textContent = today.toLocaleDateString("ar-SA", {weekday:"long",year:"numeric",month:"long",day:"numeric"});
+document.getElementById("att-month").value = today.toISOString().slice(0,7);
+document.getElementById("pay-month").value = today.toISOString().slice(0,7);
+
+// Navigation
+function showPage(name) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  document.getElementById("page-"+name).classList.add("active");
+  event.currentTarget.classList.add("active");
+  const titles = {dashboard:"لوحة التحكم", attendance:"سجل الحضور", employees:"الموظفون", payroll:"مسيرة الرواتب"};
+  document.getElementById("page-title").textContent = titles[name];
+  if (name === "attendance") { loadAttendance(); loadEmpFilter(); }
+  if (name === "employees")  loadEmployees();
+  if (name === "payroll")    loadPayroll();
+}
+
+// Toast
+function toast(msg, ok=true) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.background = ok ? "#16a34a" : "#dc2626";
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3000);
+}
+
+// Dashboard
+async function loadDashboard() {
+  const d = await fetch("/api/dashboard").then(r=>r.json());
+  document.getElementById("stat-emp").textContent   = d.emp_count;
+  document.getElementById("stat-today").textContent = d.today_att;
+  document.getElementById("stat-late").textContent  = d.today_late;
+  document.getElementById("stat-ded").textContent   = d.month_deductions.toLocaleString("ar");
+  const tb = document.getElementById("recent-table");
+  tb.innerHTML = d.recent.map(r => `
+    <tr>
+      <td><b>${r.name_ar}</b></td>
+      <td>${r.date}</td>
+      <td>${r.check_in||"—"}</td>
+      <td>${r.check_out||"—"}</td>
+      <td>${r.delay_minutes>0 ? `<span class="badge badge-red">${Math.round(r.delay_minutes)} د</span>` : '<span class="badge badge-green">في الوقت</span>'}</td>
+      <td>${r.delay_minutes>0||r.early_minutes>0 ? '<span class="badge badge-red">مخالفة</span>' : '<span class="badge badge-green">ملتزم</span>'}</td>
+      <td>${r.deduction_sar>0 ? `<span style="color:#dc2626;font-weight:700">${r.deduction_sar} ر</span>` : "—"}</td>
+    </tr>`).join("");
+}
+
+// Run Today
+async function runToday() {
+  toast("جاري المعالجة...", true);
+  const r = await fetch("/api/run_today", {method:"POST"}).then(r=>r.json());
+  toast(r.msg, r.ok);
+  if (r.ok) loadDashboard();
+}
+
+// Attendance
+async function loadAttendance() {
+  const month = document.getElementById("att-month").value;
+  const emp   = document.getElementById("att-emp").value;
+  const rows  = await fetch(`/api/attendance?month=${month}&emp=${emp}`).then(r=>r.json());
+  document.getElementById("att-table").innerHTML = rows.map(r => `
+    <tr>
+      <td><b>${r.name_ar}</b></td>
+      <td>${r.date}</td>
+      <td>${r.check_in||"—"}</td>
+      <td>${r.check_out||"—"}</td>
+      <td>${r.delay_minutes>0?`<span class="badge badge-red">${Math.round(r.delay_minutes)}</span>`:"—"}</td>
+      <td>${r.early_minutes>0?`<span class="badge badge-orange">${Math.round(r.early_minutes)}</span>`:"—"}</td>
+      <td>${r.violation_in||r.violation_out||"—"}</td>
+      <td>${r.warning?'<span class="badge badge-orange">نعم</span>':"—"}</td>
+      <td>${r.deduction_sar>0?`<span style="color:#dc2626;font-weight:700">${r.deduction_sar}</span>`:"—"}</td>
+    </tr>`).join("");
+}
+
+async function loadEmpFilter() {
+  const emps = await fetch("/api/employees").then(r=>r.json());
+  const sel  = document.getElementById("att-emp");
+  sel.innerHTML = '<option value="">كل الموظفين</option>' +
+    emps.map(e=>`<option value="${e.name_en}">${e.name_ar}</option>`).join("");
+}
+
+function exportExcel() {
+  const month = document.getElementById("att-month").value;
+  window.location.href = `/api/export_excel?month=${month}`;
+}
+
+// Employees
+async function loadEmployees() {
+  const emps = await fetch("/api/employees").then(r=>r.json());
+  document.getElementById("emp-table").innerHTML = emps.map(e => `
+    <tr>
+      <td><b>${e.name_ar}</b><br><small style="color:#aaa">${e.name_en}</small></td>
+      <td><span class="badge ${e.type==='fixed'?'badge-blue':'badge-green'}">${e.type==='fixed'?'ثابت':'مرن'}</span></td>
+      <td>${e.salary.toLocaleString("ar")} ر</td>
+      <td>${e.housing_allowance} ر</td>
+      <td>${e.transport_allowance} ر</td>
+      <td>${e.type==='fixed'?e.shift_start+' — '+e.shift_end:e.weekly_hours+' س/أسبوع'}</td>
+      <td style="font-size:12px;color:#888">${e.email||"—"}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick='editEmployee(${JSON.stringify(e)})'>تعديل</button>
+        <button class="btn btn-danger  btn-sm" onclick="deleteEmployee(${e.id},'${e.name_ar}')">حذف</button>
+      </td>
+    </tr>`).join("");
+}
+
+function openAddModal() {
+  document.getElementById("modal-title").textContent = "إضافة موظف جديد";
+  document.getElementById("emp-id").value = "";
+  ["name-ar","name-en","email"].forEach(f=>document.getElementById("f-"+f).value="");
+  ["salary","housing","transport","commission","other-ded"].forEach(f=>document.getElementById("f-"+f).value=0);
+  document.getElementById("f-start").value="09:00";
+  document.getElementById("f-end").value="17:00";
+  document.getElementById("f-weekly").value=40;
+  document.getElementById("f-type").value="fixed";
+  document.getElementById("f-name-en").disabled = false;
+  toggleShiftFields();
+  document.getElementById("emp-modal").classList.add("open");
+}
+
+function editEmployee(e) {
+  document.getElementById("modal-title").textContent = "تعديل بيانات الموظف";
+  document.getElementById("emp-id").value = e.id;
+  document.getElementById("f-name-ar").value = e.name_ar;
+  document.getElementById("f-name-en").value = e.name_en;
+  document.getElementById("f-name-en").disabled = true;
+  document.getElementById("f-email").value = e.email||"";
+  document.getElementById("f-salary").value = e.salary;
+  document.getElementById("f-type").value = e.type;
+  document.getElementById("f-start").value = e.shift_start||"09:00";
+  document.getElementById("f-end").value = e.shift_end||"17:00";
+  document.getElementById("f-weekly").value = e.weekly_hours||40;
+  document.getElementById("f-housing").value = e.housing_allowance||0;
+  document.getElementById("f-transport").value = e.transport_allowance||0;
+  document.getElementById("f-commission").value = e.commission||0;
+  document.getElementById("f-other-ded").value = e.other_deductions||0;
+  toggleShiftFields();
+  document.getElementById("emp-modal").classList.add("open");
+}
+
+function toggleShiftFields() {
+  const flex = document.getElementById("f-type").value === "flex";
+  document.querySelectorAll(".shift-field").forEach(f=>f.style.display=flex?"none":"flex");
+  document.getElementById("weekly-field").style.display = flex?"flex":"none";
+}
+
+function closeModal() {
+  document.getElementById("emp-modal").classList.remove("open");
+}
+
+async function saveEmployee() {
+  const id = document.getElementById("emp-id").value;
+  const data = {
+    name_ar: document.getElementById("f-name-ar").value,
+    name_en: document.getElementById("f-name-en").value,
+    email: document.getElementById("f-email").value,
+    salary: +document.getElementById("f-salary").value,
+    type: document.getElementById("f-type").value,
+    shift_start: document.getElementById("f-start").value,
+    shift_end: document.getElementById("f-end").value,
+    weekly_hours: +document.getElementById("f-weekly").value,
+    housing_allowance: +document.getElementById("f-housing").value,
+    transport_allowance: +document.getElementById("f-transport").value,
+    commission: +document.getElementById("f-commission").value,
+    other_deductions: +document.getElementById("f-other-ded").value,
+  };
+  const url    = id ? `/api/employees/${id}` : "/api/employees";
+  const method = id ? "PUT" : "POST";
+  const r = await fetch(url, {method, headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)}).then(r=>r.json());
+  if (r.ok) { toast("تم الحفظ بنجاح ✅"); closeModal(); loadEmployees(); }
+  else toast("حدث خطأ ❌", false);
+}
+
+async function deleteEmployee(id, name) {
+  if (!confirm(`هل تريد حذف ${name}؟`)) return;
+  const r = await fetch(`/api/employees/${id}`, {method:"DELETE"}).then(r=>r.json());
+  if (r.ok) { toast("تم الحذف"); loadEmployees(); }
+}
+
+// Payroll
+async function loadPayroll() {
+  const month = document.getElementById("pay-month").value;
+  const [emps, att] = await Promise.all([
+    fetch("/api/employees").then(r=>r.json()),
+    fetch(`/api/attendance?month=${month}`).then(r=>r.json())
+  ]);
+  const dedByEmp = {};
+  att.forEach(a => { dedByEmp[a.emp_name_en] = (dedByEmp[a.emp_name_en]||0) + (a.deduction_sar||0); });
+
+  document.getElementById("pay-table").innerHTML = emps.map(e => {
+    const ded   = dedByEmp[e.name_en] || 0;
+    const gross = e.salary + e.housing_allowance + e.transport_allowance + e.commission;
+    const net   = gross - ded - e.other_deductions;
+    return `<tr>
+      <td><b>${e.name_ar}</b></td>
+      <td>${e.salary.toLocaleString("ar")}</td>
+      <td>${e.housing_allowance}</td>
+      <td>${e.transport_allowance}</td>
+      <td>${e.commission||0}</td>
+      <td>${gross.toLocaleString("ar")}</td>
+      <td>${ded>0?`<span style="color:#dc2626;font-weight:700">${ded.toFixed(2)}</span>`:"—"}</td>
+      <td><b style="color:#16a34a;font-size:15px">${net.toFixed(2)}</b></td>
+    </tr>`;
+  }).join("");
+}
+
+function exportPayroll() {
+  const month = document.getElementById("pay-month").value;
+  window.location.href = `/api/export_excel?month=${month}`;
+}
+
+// Init
+loadDashboard();
+</script>
+
+</body>
+</html>
